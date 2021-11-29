@@ -20,7 +20,7 @@ public class AccountWebService implements AccountService {
 
     @Autowired
     public AccountWebService(WebClient.Builder webClientBuilder,
-                             @Value("${account.web.url}") String URI) {
+                             @Value("${account.web.url:http://account-service/accounts}") String URI) {
         this.webClientBuilder = webClientBuilder;
         this.URI = URI;
     }
