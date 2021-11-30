@@ -17,7 +17,7 @@ public class UserWebService implements UserService {
 
     @Autowired
     public UserWebService(WebClient.Builder webClientBuilder,
-                          @Value("${user.web.url: http://user-service/accounts}") String URI) {
+                          @Value("${bootcamp.web.user:http://user-service/accounts}") String URI) {
         this.webClientBuilder = webClientBuilder;
         this.URI = URI;
     }
