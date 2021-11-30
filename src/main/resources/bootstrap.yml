@@ -1,6 +1,6 @@
 spring:
   application:
-    name: operation-service
+    name: account-transaction-service
   cloud:
     config:
       enabled: true

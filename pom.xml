@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.nttdata.bootcamp</groupId>
-	<artifactId>operation-service</artifactId>
+	<artifactId>account-transaction-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>operation-service</name>
+	<name>account-transaction-service</name>
 	<description>Operation Service For Bootcamp Project</description>
 	<properties>
 		<java.version>11</java.version>
