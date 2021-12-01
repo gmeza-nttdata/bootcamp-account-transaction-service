@@ -30,7 +30,10 @@ public class StatementCrudRepository implements StatementRepository {
 
     @Override
     public Mono<AccountStatement> create(AccountStatement accountStatement) {
-        return repository.save(mapStatementToStatementDao(accountStatement))
+        return Mono.just(accountStatement)
+                .doOnNext(s -> s.setId(null))
+                .map(this::mapStatementToStatementDao)
+                .flatMap(repository::save)
                 .map(this::mapStatementDaoToStatement);
     }
 
@@ -39,7 +42,8 @@ public class StatementCrudRepository implements StatementRepository {
         return repository.findById(id)
                 .flatMap(s -> {
                     s.setId(id);
-                    return Mono.just(mapStatementToStatementDao(accountStatement));
+                    return Mono.just(accountStatement)
+                            .map(this::mapStatementToStatementDao);
                 }).flatMap(repository::save)
                 .map(this::mapStatementDaoToStatement);
     }

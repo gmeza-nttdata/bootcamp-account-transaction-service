@@ -18,11 +18,7 @@ import reactor.core.publisher.Mono;
 public class AccountOperationsImpl implements AccountOperations {
 
     private final StatementRepository statementRepository;
-
-    @Autowired
-    AccountWebService accountWebService;
-    @Autowired
-    UserWebService userWebService;
+    private final AccountWebService accountWebService;
 
     @Override
     public Mono<AccountStatement> deposit(OperationData operationData) {
