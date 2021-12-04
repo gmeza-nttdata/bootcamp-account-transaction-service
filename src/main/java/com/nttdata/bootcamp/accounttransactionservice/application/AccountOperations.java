@@ -22,4 +22,5 @@ public interface AccountOperations {
     Mono<AccountStatement> withdraw(OperationData operationData);
     Flux<AccountStatement> getStatements(String accountNumber);
 
+    Flux<AccountStatement> getAllStatements();
 }

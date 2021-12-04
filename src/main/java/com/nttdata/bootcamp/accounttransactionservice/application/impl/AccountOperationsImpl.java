@@ -5,13 +5,19 @@ import com.nttdata.bootcamp.accounttransactionservice.application.repository.Sta
 import com.nttdata.bootcamp.accounttransactionservice.domain.AccountStatement;
 import com.nttdata.bootcamp.accounttransactionservice.domain.dto.OperationData;
 import com.nttdata.bootcamp.accounttransactionservice.domain.dto.OperationType;
+import com.nttdata.bootcamp.accounttransactionservice.domain.entity.account.Account;
+import com.nttdata.bootcamp.accounttransactionservice.domain.entity.account.AccountContract;
 import com.nttdata.bootcamp.accounttransactionservice.infrastructure.service.AccountWebService;
-import com.nttdata.bootcamp.accounttransactionservice.infrastructure.service.UserWebService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -24,39 +30,59 @@ public class AccountOperationsImpl implements AccountOperations {
     public Mono<AccountStatement> deposit(OperationData operationData) {
 
         return accountWebService.get(operationData.getNumber())
-                .flatMap(account -> {
-                    // Deposit Operation
-                    account.setBalance(account.getBalance().add(operationData.getAmount()));
-                    return accountWebService.update(account.getNumber(), account)
-                            .flatMap(
-                                    updatedAccount ->
-                                            statementRepository
-                                                    .create(new AccountStatement(updatedAccount, OperationType.DEPOSIT, operationData.getAmount()))
-                            )
-                            .onErrorReturn(new AccountStatement());
-                })
-                .onErrorReturn(new AccountStatement());
+                .flatMap(account ->
+                        statementRepository.queryAll()
+                            .filter(item -> item.getNumber().equals(account.getNumber()))
+                            .filter(item -> this.filterDateRange(account.getContract(), item.getDateTime()))
+                        .collectList()
+                        .flatMap(statements -> {
+                            BigDecimal fee = this.calculateFee(statements, account);
+                            BigDecimal finalBalance = account.getBalance()
+                                    .add(operationData.getAmount())
+                                    .subtract(fee);
+
+                            if (finalBalance.compareTo(BigDecimal.ZERO) < 0)
+                                throw new IllegalArgumentException("Not enough balance to achieve transaction");
+
+                            account.setBalance(finalBalance);
+                            return accountWebService.update(account.getNumber(), account)
+                                    .flatMap(updated -> statementRepository.create(
+                                            new AccountStatement(updated,
+                                                    OperationType.DEPOSIT,
+                                                    operationData.getAmount(),
+                                                    fee)
+                                    ));
+                        })
+                );
     }
 
     @Override
     public Mono<AccountStatement> withdraw(OperationData operationData) {
+
         return accountWebService.get(operationData.getNumber())
-                .flatMap(account -> {
-                    // Withdraw Operation
+                .flatMap(account ->
+                        statementRepository.queryAll()
+                                .filter(item -> item.getNumber().equals(account.getNumber()))
+                                .filter(item -> this.filterDateRange(account.getContract(), item.getDateTime()))
+                                .collectList()
+                                .flatMap(statements -> {
+                                    BigDecimal fee = this.calculateFee(statements, account);
+                                    BigDecimal finalBalance = account.getBalance()
+                                            .subtract(operationData.getAmount())
+                                            .subtract(fee);
 
-                    if (account.getBalance().compareTo(operationData.getAmount()) < 0)
-                        return null;
+                                    if (finalBalance.compareTo(BigDecimal.ZERO) < 0)
+                                        throw new IllegalArgumentException("Not enough balance to achieve transaction");
 
-                    account.setBalance(account.getBalance().subtract(operationData.getAmount()));
-                    return accountWebService.update(account.getNumber(), account)
-                            .flatMap(
-                                    updatedAccount ->
-                                            statementRepository
-                                                    .create(new AccountStatement(account, OperationType.WITHDRAWAL, operationData.getAmount()))
-                            )
-                            .onErrorReturn(new AccountStatement());
-                })
-                .onErrorReturn(new AccountStatement());
+                                    account.setBalance(finalBalance);
+                                    return accountWebService.update(account.getNumber(), account)
+                                            .flatMap(updated -> statementRepository.create(
+                                                    new AccountStatement(updated,
+                                                            OperationType.WITHDRAWAL,
+                                                            operationData.getAmount(),
+                                                            fee)
+                                            ));
+                                }));
     }
 
 
@@ -65,4 +91,40 @@ public class AccountOperationsImpl implements AccountOperations {
         return statementRepository.queryAll()
                 .filter(statement -> statement.getNumber().equals(accountNumber));
     }
+
+    @Override
+    public Flux<AccountStatement> getAllStatements() {
+        return statementRepository.queryAll();
+    }
+
+    private BigDecimal calculateFee(List<AccountStatement> statements, Account account) {
+
+        AccountContract c = account.getContract();
+        Integer limit = (c.getHasDailyTransactionLimit())?
+                c.getDailyTransactionLimit():c.getMonthlyTransactionLimit();
+
+        if (limit > statements.size())
+            return BigDecimal.ZERO;
+        else
+            return c.getTransactionFeeAfterLimit();
+
+    }
+
+    private boolean filterDateRange(AccountContract contract, LocalDateTime dt) {
+
+        LocalDateTime lowerBound;
+        LocalDateTime upperBound = LocalDateTime.now();
+
+        if (contract.getHasDailyTransactionLimit()!=null &&
+                contract.getHasDailyTransactionLimit()
+        )
+            lowerBound = LocalDateTime.of(upperBound.toLocalDate(),
+                    LocalTime.of(0,0,0));
+        else // MonthlyTransactionLimit
+            lowerBound = LocalDateTime.of(LocalDate.of(upperBound.toLocalDate().getYear(),
+                    upperBound.toLocalDate().getMonth(), 1), LocalTime.of(0,0,0));
+
+        return dt.isAfter(lowerBound) && dt.isBefore(upperBound);
+    }
+
 }

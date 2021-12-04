@@ -1,7 +1,7 @@
 package com.nttdata.bootcamp.accounttransactionservice.infrastructure.service;
 
 import com.nttdata.bootcamp.accounttransactionservice.application.service.AccountService;
-import com.nttdata.bootcamp.accounttransactionservice.domain.entity.Account;
+import com.nttdata.bootcamp.accounttransactionservice.domain.entity.account.Account;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;

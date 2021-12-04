@@ -17,4 +17,6 @@ public class AccountStatementDao {
     private OperationType operation;
     private BigDecimal amount;
     private LocalDateTime dateTime;
+    private BigDecimal fee;
+
 }
