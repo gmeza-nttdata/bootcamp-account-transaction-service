@@ -2,12 +2,12 @@ package com.nttdata.bootcamp.accounttransactionservice.application.impl;
 
 import com.nttdata.bootcamp.accounttransactionservice.application.AccountOperations;
 import com.nttdata.bootcamp.accounttransactionservice.application.repository.StatementRepository;
+import com.nttdata.bootcamp.accounttransactionservice.application.service.AccountService;
 import com.nttdata.bootcamp.accounttransactionservice.domain.AccountStatement;
 import com.nttdata.bootcamp.accounttransactionservice.domain.dto.OperationData;
 import com.nttdata.bootcamp.accounttransactionservice.domain.dto.OperationType;
 import com.nttdata.bootcamp.accounttransactionservice.domain.entity.account.Account;
 import com.nttdata.bootcamp.accounttransactionservice.domain.entity.account.AccountContract;
-import com.nttdata.bootcamp.accounttransactionservice.infrastructure.service.AccountWebService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -24,12 +24,12 @@ import java.util.List;
 public class AccountOperationsImpl implements AccountOperations {
 
     private final StatementRepository statementRepository;
-    private final AccountWebService accountWebService;
+    private final AccountService accountService;
 
     @Override
     public Mono<AccountStatement> deposit(OperationData operationData) {
 
-        return accountWebService.get(operationData.getNumber())
+        return accountService.get(operationData.getNumber())
                 .flatMap(account ->
                         statementRepository.queryAll()
                             .filter(item -> item.getNumber().equals(account.getNumber()))
@@ -45,7 +45,7 @@ public class AccountOperationsImpl implements AccountOperations {
                                 throw new IllegalArgumentException("Not enough balance to achieve transaction");
 
                             account.setBalance(finalBalance);
-                            return accountWebService.update(account.getNumber(), account)
+                            return accountService.update(account.getNumber(), account)
                                     .flatMap(updated -> statementRepository.create(
                                             new AccountStatement(updated,
                                                     OperationType.DEPOSIT,
@@ -59,7 +59,7 @@ public class AccountOperationsImpl implements AccountOperations {
     @Override
     public Mono<AccountStatement> withdraw(OperationData operationData) {
 
-        return accountWebService.get(operationData.getNumber())
+        return accountService.get(operationData.getNumber())
                 .flatMap(account ->
                         statementRepository.queryAll()
                                 .filter(item -> item.getNumber().equals(account.getNumber()))
@@ -75,7 +75,7 @@ public class AccountOperationsImpl implements AccountOperations {
                                         throw new IllegalArgumentException("Not enough balance to achieve transaction");
 
                                     account.setBalance(finalBalance);
-                                    return accountWebService.update(account.getNumber(), account)
+                                    return accountService.update(account.getNumber(), account)
                                             .flatMap(updated -> statementRepository.create(
                                                     new AccountStatement(updated,
                                                             OperationType.WITHDRAWAL,
